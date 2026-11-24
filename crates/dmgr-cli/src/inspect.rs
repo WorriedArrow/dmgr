@@ -120,6 +120,16 @@ pub fn info(args: InfoArgs) -> Result<()> {
         Some(u) => {
             let k = u.koly();
             writeln!(out, "Container:    UDIF ({})", u.format_guess())?;
+            writeln!(
+                out,
+                "Trailer:      version {}, flags {:#x}, variant {}, data fork offset {}, rsrc fork {}+{}",
+                k.version,
+                k.flags,
+                k.image_variant,
+                k.data_fork_offset,
+                k.rsrc_fork_offset,
+                k.rsrc_fork_length
+            )?;
             writeln!(out, "Segment ID:   {}", uuid_string(&k.segment_id))?;
             writeln!(
                 out,

@@ -206,18 +206,13 @@ impl<R: ReadAt> UdifImage<R> {
         let base = self.koly.data_fork_offset;
         for b in &blkx {
             let mut h = crc32fast::Hasher::new();
-            let mut covered = 0u64;
             for c in &b.table.chunks {
-                if matches!(c.kind, chunk::COMMENT | chunk::TERMINATOR) {
+                // Like hdiutil, "ignore" chunks (and gaps) are not checksummed.
+                if matches!(c.kind, chunk::COMMENT | chunk::TERMINATOR | chunk::IGNORE) {
                     continue;
                 }
-                if c.sector > covered {
-                    // gaps read as zeros
-                    let zeros = vec![0u8; ((c.sector - covered) * SECTOR_SIZE) as usize];
-                    h.update(&zeros);
-                }
                 let out_len = (c.sector_count * SECTOR_SIZE) as usize;
-                let data = if matches!(c.kind, chunk::ZERO_FILL | chunk::IGNORE) {
+                let data = if c.kind == chunk::ZERO_FILL {
                     vec![0u8; out_len]
                 } else {
                     let raw = self
@@ -226,7 +221,6 @@ impl<R: ReadAt> UdifImage<R> {
                     decompress(c.kind, &raw, out_len)?
                 };
                 h.update(&data);
-                covered = c.sector + c.sector_count;
             }
             let computed = h.finalize();
             if let Some(stored) = b.table.checksum.crc32_value() {

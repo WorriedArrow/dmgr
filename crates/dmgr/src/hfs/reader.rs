@@ -352,12 +352,17 @@ impl<R: ReadAt> Volume<R> {
     }
 
     /// Children of a folder, hiding HFS+ private metadata folders at the root.
+    /// The journal files of journaled volumes are hidden too, as macOS does.
     pub fn list(&self, cnid: u32) -> Vec<&Entry> {
+        let journaled = self.header.attributes & vol_attr::JOURNALED != 0;
         self.children(cnid)
             .into_iter()
             .filter(|e| {
                 !(e.parent == cnid::ROOT_FOLDER
-                    && (e.name == PRIVATE_DATA_DIR || e.name == PRIVATE_DIR_DATA_DIR))
+                    && (e.name == PRIVATE_DATA_DIR
+                        || e.name == PRIVATE_DIR_DATA_DIR
+                        || (journaled
+                            && (e.name == ".journal" || e.name == ".journal_info_block"))))
             })
             .collect()
     }

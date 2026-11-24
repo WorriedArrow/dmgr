@@ -291,6 +291,11 @@ if [ -n "$CROSS" ] && [ -d "$CROSS" ]; then
   done
 fi
 
+log "Diagnostics: hdiutil's images next to dmgr's"
+python3 "$HERE/udif_dump.py" "$WORK"/hdiutil-UDRW-*.dmg "$WORK"/hdiutil-UDRO-*.dmg "$WORK"/hdiutil-ULMO-*.dmg \
+  "$WORK/UDRW-hfs+-none.dmg" "$WORK/ULMO-hfs+-none.dmg" 2>&1 | cut -c1-400 || true
+hdiutil imageinfo "$WORK"/hdiutil-UDRW-*.dmg 2>&1 | head -60 || true
+
 log "Summary"
 echo "passed: $PASSES"
 if [ ${#FAILURES[@]} -gt 0 ]; then

@@ -152,7 +152,10 @@ pub fn write<W: Write>(
             for (p, c) in batch.iter().zip(compressed) {
                 match (&p.data, c) {
                     (None, _) => {
-                        update_crc_zeros(&mut crc, p.sectors * SECTOR_SIZE);
+                        // hdiutil leaves "ignore" chunks out of the checksum.
+                        if !region.free {
+                            update_crc_zeros(&mut crc, p.sectors * SECTOR_SIZE);
+                        }
                         let kind = if region.free {
                             chunk::IGNORE
                         } else {

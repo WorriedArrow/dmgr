@@ -575,7 +575,8 @@ pub struct AttrKey {
 }
 
 impl AttrKey {
-    pub const MAX_KEY_LENGTH: u16 = 266 - 2;
+    /// `kHFSPlusAttrKeyMaximumLength`: `sizeof(HFSPlusAttrKey) - 2`.
+    pub const MAX_KEY_LENGTH: u16 = 266;
 
     pub(crate) fn encode(&self) -> Vec<u8> {
         let mut o = Vec::with_capacity(14 + self.name.len() * 2);
