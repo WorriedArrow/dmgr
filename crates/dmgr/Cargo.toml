@@ -1,0 +1,47 @@
+[package]
+name = "dmgr"
+description = "Create, inspect and extract Apple disk images (DMG/UDIF with HFS+) on any platform"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "../../README.md"
+keywords = ["dmg", "macos", "hfs", "udif", "disk-image"]
+categories = ["filesystem", "compression", "development-tools"]
+
+[features]
+default = ["parallel", "bzip2", "lzfse", "lzma"]
+## Compress chunks on all cores.
+parallel = ["dep:rayon"]
+## UDBZ (bzip2) support.
+bzip2 = ["dep:bzip2"]
+## ULFO (LZFSE) support.
+lzfse = ["dep:lzfse_rust"]
+## ULMO (LZMA/xz) support.
+lzma = ["dep:lzma-rust2"]
+## serde support for layout/config types.
+serde = ["dep:serde"]
+
+[dependencies]
+bzip2 = { version = "0.6", optional = true }
+crc32fast = "1.5"
+flate2 = "1.1"
+lzfse_rust = { version = "0.2", optional = true }
+lzma-rust2 = { version = "0.25", optional = true, default-features = false, features = ["std", "encoder", "optimization", "xz"] }
+plist = "1.10"
+rayon = { version = "1.12", optional = true }
+serde = { version = "1", optional = true, features = ["derive"] }
+thiserror = "2"
+unicode-normalization = "0.1"
+uuid = { version = "1.29", features = ["v4", "v5"] }
+
+[target.'cfg(unix)'.dependencies]
+xattr = "1.7"
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true

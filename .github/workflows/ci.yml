@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: fmt + clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets --all-features
+      - run: cargo clippy -p dmgr --no-default-features
+      - name: Docs
+        run: cargo doc -p dmgr --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
+
+  test:
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace --all-features
+      - name: Minimal features
+        run: cargo test -p dmgr --no-default-features --lib
+
+  msrv:
+    name: MSRV (1.85)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.85
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --workspace --all-targets
+
+  # Build images on Linux and Windows; macOS checks them with Apple's tools.
+  cross-images:
+    name: images from ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            fixture_flags: ""
+            manifest_flags: ""
+          - os: windows-latest
+            platform: windows
+            fixture_flags: "--no-symlinks"
+            manifest_flags: "--no-mode"
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p dmgr-cli
+      - name: Build fixture and images
+        run: |
+          set -euo pipefail
+          out="cross/${{ matrix.platform }}"
+          mkdir -p "$out"
+          python scripts/make_fixture.py fixture ${{ matrix.fixture_flags }}
+          python scripts/manifest.py fixture ${{ matrix.manifest_flags }} \
+            --skip .DS_Store --skip .background --skip .VolumeIcon.icns --skip .fseventsd --skip .Trashes \
+            > "$out/manifest.txt"
+          if [ -n "${{ matrix.manifest_flags }}" ]; then touch "$out/no-mode"; fi
+          for f in UDZO ULFO ULMO UDBZ UDRO UDRW; do
+            ./target/release/dmgr create -q -o "$out/$f-hfsplus-gpt.dmg" -V "Cross $f" -f $f -s fixture
+            ./target/release/dmgr verify "$out/$f-hfsplus-gpt.dmg"
+          done
+          ./target/release/dmgr create -q -o "$out/UDZO-hfsx-none.dmg" -V "Cross HFSX" --fs hfsx --layout none -s fixture
+          ./target/release/dmgr verify "$out/UDZO-hfsx-none.dmg"
+          ls -la "$out"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cross-${{ matrix.platform }}
+          path: cross/
+          retention-days: 7
+
+  conformance:
+    name: conformance (${{ matrix.os }})
+    needs: cross-images
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-26, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --release -p dmgr-cli
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cross-*
+          path: cross
+          merge-multiple: true
+      - name: Conformance with hdiutil, fsck_hfs and Finder
+        run: bash scripts/conformance.sh target/release/dmgr cross

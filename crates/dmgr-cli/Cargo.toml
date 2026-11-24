@@ -1,0 +1,27 @@
+[package]
+name = "dmgr-cli"
+description = "Command-line tool to create, inspect and extract macOS disk images (.dmg) on any platform"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+readme = "../../README.md"
+keywords = ["dmg", "macos", "hdiutil", "disk-image", "cli"]
+categories = ["command-line-utilities", "filesystem"]
+
+[[bin]]
+name = "dmgr"
+path = "src/main.rs"
+
+[dependencies]
+dmgr = { workspace = true, features = ["serde"] }
+anyhow = "1"
+clap = { version = "4.6", features = ["derive", "wrap_help"] }
+serde = { version = "1", features = ["derive"] }
+toml = "1"
+uuid = "1"
+
+[lints]
+workspace = true
