@@ -51,11 +51,11 @@ jobs:
         run: cargo test -p dmgr --no-default-features --lib
 
   msrv:
-    name: MSRV (1.85)
+    name: MSRV (1.89)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@1.85
+      - uses: dtolnay/rust-toolchain@1.89
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --workspace --all-targets
 
