@@ -1,5 +1,7 @@
 # dmgr
 
+[![CI](https://github.com/worriedarrow/dmgr/actions/workflows/ci.yml/badge.svg)](https://github.com/worriedarrow/dmgr/actions/workflows/ci.yml)
+
 Create, inspect, verify and extract macOS disk images (`.dmg`) on Linux, Windows and macOS. dmgr is written in Rust with no C dependencies and does not need `hdiutil`.
 
 ```sh
