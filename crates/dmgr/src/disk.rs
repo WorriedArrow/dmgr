@@ -108,15 +108,15 @@ impl VirtualDisk {
             )));
         }
         let idx = self.extents.partition_point(|(o, _)| *o < offset);
-        if let Some((prev_off, prev)) = idx.checked_sub(1).map(|i| &self.extents[i]) {
-            if prev_off + prev.len() > offset {
-                return Err(invalid("overlapping disk extents"));
-            }
+        if let Some((prev_off, prev)) = idx.checked_sub(1).map(|i| &self.extents[i])
+            && prev_off + prev.len() > offset
+        {
+            return Err(invalid("overlapping disk extents"));
         }
-        if let Some((next_off, _)) = self.extents.get(idx) {
-            if end > *next_off {
-                return Err(invalid("overlapping disk extents"));
-            }
+        if let Some((next_off, _)) = self.extents.get(idx)
+            && end > *next_off
+        {
+            return Err(invalid("overlapping disk extents"));
         }
         self.extents.insert(idx, (offset, src));
         Ok(())

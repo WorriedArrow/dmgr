@@ -199,11 +199,11 @@ fn newest_mtime(paths: &[PathBuf]) -> SystemTime {
             if let Ok(m) = md.modified() {
                 *best = (*best).max(m);
             }
-            if md.is_dir() {
-                if let Ok(rd) = std::fs::read_dir(p) {
-                    for e in rd.flatten() {
-                        walk(&e.path(), best);
-                    }
+            if md.is_dir()
+                && let Ok(rd) = std::fs::read_dir(p)
+            {
+                for e in rd.flatten() {
+                    walk(&e.path(), best);
                 }
             }
         }

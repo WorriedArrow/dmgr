@@ -125,19 +125,18 @@ pub fn check_btree(name: &str, tree: &BTreeFile, cmp: KeyCmp<'_>) -> Result<Vec<
                 }
                 for (ri, rec) in node.records.iter().enumerate() {
                     let (key, data) = tree.split_record(rec, !is_leaf)?;
-                    if ri == 0 {
-                        if let Some(first) = expect_first {
-                            if cmp(first, key)? != Ordering::Equal {
-                                errs.push(format!(
-                                    "{name}: index key for node {n} differs from its first key"
-                                ));
-                            }
-                        }
+                    if ri == 0
+                        && let Some(first) = expect_first
+                        && cmp(first, key)? != Ordering::Equal
+                    {
+                        errs.push(format!(
+                            "{name}: index key for node {n} differs from its first key"
+                        ));
                     }
-                    if let Some(pk) = &prev_key {
-                        if cmp(pk, key)? != Ordering::Less {
-                            errs.push(format!("{name}: keys out of order in node {n} record {ri}"));
-                        }
+                    if let Some(pk) = &prev_key
+                        && cmp(pk, key)? != Ordering::Less
+                    {
+                        errs.push(format!("{name}: keys out of order in node {n} record {ri}"));
                     }
                     prev_key = Some(key.to_vec());
                     if is_leaf {

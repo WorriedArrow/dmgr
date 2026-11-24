@@ -94,7 +94,7 @@ pub fn write<W: Write>(
     if opts.chunk_sectors == 0 || opts.chunk_sectors > 1 << 16 {
         return Err(invalid("chunk size must be between 1 and 65536 sectors"));
     }
-    if disk.size() % SECTOR_SIZE != 0 {
+    if !disk.size().is_multiple_of(SECTOR_SIZE) {
         return Err(invalid("disk size is not a multiple of 512"));
     }
     let total_sectors = disk.size() / SECTOR_SIZE;

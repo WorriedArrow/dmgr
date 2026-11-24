@@ -43,7 +43,7 @@ def main() -> None:
                         h.update(block)
                 lines.append(f"{rel} file{mode} {st.st_size} {h.hexdigest()}")
     lines.sort()
-    sys.stdout.write("\n".join(lines) + "\n")
+    sys.stdout.buffer.write(("\n".join(lines) + "\n").encode("utf-8"))
 
 
 if __name__ == "__main__":

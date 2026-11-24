@@ -62,7 +62,7 @@ pub fn layout(
     disk_guid: Uuid,
     partition_guid: Uuid,
 ) -> Result<DiskLayout> {
-    if volume.size() % SECTOR_SIZE != 0 {
+    if !volume.size().is_multiple_of(SECTOR_SIZE) {
         return Err(invalid("volume size must be a multiple of 512"));
     }
     match scheme {
@@ -221,12 +221,11 @@ pub fn read_partitions<R: ReadAt>(dev: &mut R) -> Result<(MapKind, Vec<Partition
             return read_gpt(dev, &hdr).map(|p| (MapKind::Gpt, p));
         }
         let b0 = dev.read_vec(0, SECTOR_SIZE as usize)?;
-        if &b0[0..2] == b"ER" {
-            if let Ok(parts) = read_apm(dev) {
-                if !parts.is_empty() {
-                    return Ok((MapKind::Apm, parts));
-                }
-            }
+        if &b0[0..2] == b"ER"
+            && let Ok(parts) = read_apm(dev)
+            && !parts.is_empty()
+        {
+            return Ok((MapKind::Apm, parts));
         }
         if b0[510] == 0x55 && b0[511] == 0xAA && !looks_like_hfs(dev)? {
             let mut parts = Vec::new();
@@ -289,7 +288,9 @@ fn read_gpt<R: ReadAt>(dev: &mut R, hdr: &[u8]) -> Result<Vec<PartitionInfo>> {
         let first = le64(e, 32);
         let last = le64(e, 40);
         let name: Vec<u16> = e[56..128]
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|c| u16::from_le_bytes([c[0], c[1]]))
             .take_while(|&u| u != 0)
             .collect();

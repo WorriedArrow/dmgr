@@ -452,10 +452,10 @@ impl Layout {
                         entry.meta.finder_info.copy_from_slice(&value);
                     }
                     "com.apple.ResourceFork" => {
-                        if let Kind::File { rsrc, .. } = &mut entry.kind {
-                            if !value.is_empty() {
-                                *rsrc = Some(value.into());
-                            }
+                        if let Kind::File { rsrc, .. } = &mut entry.kind
+                            && !value.is_empty()
+                        {
+                            *rsrc = Some(value.into());
                         }
                     }
                     _ => {

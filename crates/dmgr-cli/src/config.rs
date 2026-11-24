@@ -138,10 +138,10 @@ impl Config {
         if let Some(p) = &mut cfg.icon {
             fix(p);
         }
-        if let Some(w) = &mut cfg.window {
-            if let Some(p) = &mut w.background {
-                fix(p);
-            }
+        if let Some(w) = &mut cfg.window
+            && let Some(p) = &mut w.background
+        {
+            fix(p);
         }
         Ok(cfg)
     }

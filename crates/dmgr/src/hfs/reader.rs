@@ -574,10 +574,10 @@ impl<R: ReadAt> Volume<R> {
                 entry.name
             )));
         };
-        if entry.is_compressed() {
-            if let Some(n) = self.decmpfs(&entry, out)? {
-                return Ok(n);
-            }
+        if entry.is_compressed()
+            && let Some(n) = self.decmpfs(&entry, out)?
+        {
+            return Ok(n);
         }
         self.stream_fork(f.file_id, 0, &f.data_fork, out)
     }

@@ -499,19 +499,19 @@ pub fn verify(args: VerifyArgs) -> Result<()> {
                     ));
                 }
             }
-            if let Some((s, c)) = r.master {
-                if s != c {
-                    problems.push(format!(
-                        "master checksum mismatch: stored {s:08x}, computed {c:08x}"
-                    ));
-                }
+            if let Some((s, c)) = r.master
+                && s != c
+            {
+                problems.push(format!(
+                    "master checksum mismatch: stored {s:08x}, computed {c:08x}"
+                ));
             }
-            if let Some((s, c)) = r.data_fork {
-                if s != c {
-                    problems.push(format!(
-                        "data fork checksum mismatch: stored {s:08x}, computed {c:08x}"
-                    ));
-                }
+            if let Some((s, c)) = r.data_fork
+                && s != c
+            {
+                problems.push(format!(
+                    "data fork checksum mismatch: stored {s:08x}, computed {c:08x}"
+                ));
             }
         }
         match img.hfs_partition().cloned() {
