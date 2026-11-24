@@ -600,7 +600,13 @@ impl Layout {
                     recs.push((
                         key,
                         CatalogRecord::Folder(FolderRecord {
-                            flags: ef.flags | rec_flags::HAS_FOLDER_COUNT,
+                            // macOS maintains folder counts only on HFSX volumes.
+                            flags: ef.flags
+                                | if b.opts.case_sensitive {
+                                    rec_flags::HAS_FOLDER_COUNT
+                                } else {
+                                    0
+                                },
                             valence: children.len() as u32,
                             folder_id: e.cnid,
                             create_date: created,

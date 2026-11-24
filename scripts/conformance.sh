@@ -69,7 +69,13 @@ check_image() {
     fail "$name: hdiutil imageinfo"; echo "$info" | sed 's/^/      /'; return
   fi
   local v
-  if v=$(hdiutil verify "$img" 2>&1); then pass "$name: hdiutil verify"; else fail "$name: hdiutil verify"; echo "$v" | tail -5 | sed 's/^/      /'; fi
+  if v=$(hdiutil verify "$img" 2>&1); then
+    pass "$name: hdiutil verify"
+  elif [ "$format" = UDRW ] && echo "$v" | grep -q "has no checksum"; then
+    pass "$name: hdiutil verify (raw image, no checksum)"
+  else
+    fail "$name: hdiutil verify"; echo "$v" | tail -5 | sed 's/^/      /'
+  fi
 
   local mnt="$WORK/mnt-$RANDOM"
   mkdir -p "$mnt"

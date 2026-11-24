@@ -155,7 +155,9 @@ impl DiskImage {
             }
             expect += r.sector_count;
         }
-        if expect * SECTOR_SIZE != self.size() {
+        if expect * SECTOR_SIZE != self.size() || regions.len() == 1 {
+            // A single table means no partition map; describe it the way
+            // dmgr and hdiutil do for bare volumes.
             return whole();
         }
         regions

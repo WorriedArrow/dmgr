@@ -305,7 +305,7 @@ pub fn check<R: ReadAt>(vol: &mut Volume<R>, dev_size: u64) -> Result<Vec<String
                     f.valence
                 ));
             }
-            if f.flags & rec_flags::HAS_FOLDER_COUNT != 0 && f.folder_count != dirs {
+            if hfsx && f.flags & rec_flags::HAS_FOLDER_COUNT != 0 && f.folder_count != dirs {
                 errs.push(format!(
                     "folder count of {} is {} but it has {dirs}",
                     vol.path_of(e.cnid),
