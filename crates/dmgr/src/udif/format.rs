@@ -49,7 +49,7 @@ pub const CHECKSUM_CRC32: u32 = 2;
 #[cfg_attr(feature = "serde", serde(rename_all = "UPPERCASE"))]
 #[non_exhaustive]
 pub enum Format {
-    /// UDIF read/write image (uncompressed, every sector stored).
+    /// Read/write image: the raw disk, mountable writable.
     Udrw,
     /// UDIF read-only image (uncompressed, zero runs elided).
     Udro,

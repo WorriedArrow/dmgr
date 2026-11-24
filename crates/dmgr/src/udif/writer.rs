@@ -49,8 +49,11 @@ impl WriteOptions {
 /// Information about a written image.
 #[derive(Clone, Debug)]
 pub struct WriteSummary {
-    pub koly: Koly,
+    /// The UDIF trailer (`None` for UDRW, which is a raw image).
+    pub koly: Option<Koly>,
     pub tables: Vec<(Region, BlockTable)>,
+    /// Size of the uncompressed disk in bytes.
+    pub disk_size: u64,
     /// Total bytes written, including the property list and trailer.
     pub image_size: u64,
 }
@@ -77,7 +80,9 @@ fn update_crc_zeros(h: &mut crc32fast::Hasher, mut n: u64) {
 
 /// Writes `disk` as a UDIF image to `out`, one block table per region.
 ///
-/// Regions must cover the disk contiguously in order.
+/// Regions must cover the disk contiguously in order. [`Format::Udrw`]
+/// images are written as plain raw disk images, which is what `hdiutil`
+/// produces for that format.
 pub fn write<W: Write>(
     disk: &VirtualDisk,
     regions: &[Region],
@@ -109,8 +114,10 @@ pub fn write<W: Write>(
         return Err(invalid("regions do not cover the whole disk"));
     }
 
+    if opts.format == Format::Udrw {
+        return write_raw(disk, out, progress);
+    }
     let level = opts.level.unwrap_or(opts.format.default_level());
-    let keep_zeros = opts.format == Format::Udrw;
     let mut reader = disk.reader();
     let mut data_crc = crc32fast::Hasher::new();
     let mut data_off = 0u64;
@@ -128,12 +135,12 @@ pub fn write<W: Write>(
                 let n = (region.sector_count - sector).min(u64::from(opts.chunk_sectors));
                 let off = (region.first_sector + sector) * SECTOR_SIZE;
                 let len = n * SECTOR_SIZE;
-                let data = if !keep_zeros && (region.free || disk.is_sparse(off, len)) {
+                let data = if region.free || disk.is_sparse(off, len) {
                     None
                 } else {
                     let mut buf = vec![0u8; len as usize];
                     reader.read_at(off, &mut buf)?;
-                    if !keep_zeros && buf.iter().all(|&b| b == 0) {
+                    if buf.iter().all(|&b| b == 0) {
                         None
                     } else {
                         Some(buf)
@@ -215,7 +222,7 @@ pub fn write<W: Write>(
             first_sector: region.first_sector,
             sector_count: region.sector_count,
             data_offset: 0,
-            buffers_needed: opts.chunk_sectors + 8,
+            buffers_needed: buffers_needed(opts.format, opts.chunk_sectors),
             block_descriptors: index as u32,
             checksum: Checksum::crc32(crc.finalize()),
             chunks,
@@ -273,8 +280,47 @@ pub fn write<W: Write>(
     out.flush()?;
     Ok(WriteSummary {
         image_size: data_off + xml.len() as u64 + Koly::SIZE as u64,
-        koly,
+        koly: Some(koly),
         tables,
+        disk_size: disk.size(),
+    })
+}
+
+/// Decompression buffer size (in sectors) that `hdiutil` records for each
+/// codec. Intel builds of DiskImages size their buffers from it.
+fn buffers_needed(format: Format, chunk_sectors: u32) -> u32 {
+    match format {
+        Format::Udbz => chunk_sectors * 2 + 11,
+        Format::Ulfo => chunk_sectors * 2 + 21,
+        Format::Ulmo => chunk_sectors * 2 + 1,
+        _ => chunk_sectors + 8,
+    }
+}
+
+/// Writes the disk verbatim (UDRW / raw image).
+fn write_raw<W: Write>(
+    disk: &VirtualDisk,
+    mut out: W,
+    progress: Option<Progress<'_>>,
+) -> Result<WriteSummary> {
+    let mut reader = disk.reader();
+    let mut buf = vec![0u8; 1 << 20];
+    let mut off = 0u64;
+    while off < disk.size() {
+        let n = ((disk.size() - off) as usize).min(buf.len());
+        reader.read_at(off, &mut buf[..n])?;
+        out.write_all(&buf[..n])?;
+        off += n as u64;
+        if let Some(cb) = progress {
+            cb(off, disk.size());
+        }
+    }
+    out.flush()?;
+    Ok(WriteSummary {
+        koly: None,
+        tables: Vec::new(),
+        disk_size: disk.size(),
+        image_size: disk.size(),
     })
 }
 

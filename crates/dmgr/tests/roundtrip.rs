@@ -10,7 +10,6 @@ use dmgr::finder::{Background, IconPosition, WindowLayout, dsstore};
 use dmgr::hfs::format::finder_flags;
 use dmgr::hfs::{EntryKind, Metadata, Volume, VolumeBuilder, VolumeOptions, check};
 use dmgr::io::{ReadAt, SeekReader, Slice};
-use dmgr::udif::UdifImage;
 use dmgr::{DiskImage, DmgBuilder, Format, PartitionScheme};
 
 fn epoch() -> SystemTime {
@@ -116,8 +115,9 @@ fn open(bytes: Vec<u8>) -> DiskImage {
 
 fn check_image(path: &Path) -> Volume<Slice<dmgr::ImageSource>> {
     let mut img = DiskImage::open(path).unwrap();
-    let report = img.verify_checksums().unwrap().expect("UDIF");
-    assert!(report.ok(), "checksum mismatch: {report:?}");
+    if let Some(report) = img.verify_checksums().unwrap() {
+        assert!(report.ok(), "checksum mismatch: {report:?}");
+    }
     let part = img.hfs_partition().unwrap().clone();
     let mut vol = img.into_volume().unwrap();
     let errs = check::check(&mut vol, part.size).unwrap();
@@ -424,25 +424,26 @@ fn convert_between_formats() {
         let mut vol = check_image(&b);
         assert_eq!(snapshot(&mut vol), expected);
         let img = DiskImage::open(&b).unwrap();
-        assert_eq!(img.udif().unwrap().blkx().len(), 7, "GPT regions preserved");
+        if format != Format::Udrw {
+            assert_eq!(img.udif().unwrap().blkx().len(), 7, "GPT regions preserved");
+        }
     }
 }
 
 #[test]
-fn udrw_stores_every_sector() {
+fn udrw_is_a_raw_disk() {
     let mut v = Vec::new();
-    DmgBuilder::new("RW")
+    let summary = DmgBuilder::new("RW")
         .format(Format::Udrw)
         .add_file("a", b"x".to_vec(), 0o644)
         .write_to(&mut v)
         .unwrap();
-    let src = SeekReader::new(Cursor::new(v)).unwrap();
-    let img = UdifImage::open(src).unwrap();
-    let k = img.koly().clone();
-    assert_eq!(k.data_fork_length, k.sector_count * 512);
-    for b in img.blkx() {
-        for c in &b.table.chunks {
-            assert!(c.kind == dmgr::udif::chunk::RAW || c.kind == dmgr::udif::chunk::TERMINATOR);
-        }
-    }
+    assert!(summary.koly.is_none());
+    assert_eq!(v.len() as u64, summary.disk_size);
+    assert_eq!(&v[512..520], b"EFI PART");
+    let img = open(v);
+    assert!(img.udif().is_none());
+    let mut vol = img.into_volume().unwrap();
+    let a = vol.lookup("a").unwrap().clone();
+    assert_eq!(vol.read_file(&a).unwrap(), b"x");
 }

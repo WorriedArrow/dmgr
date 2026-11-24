@@ -34,7 +34,9 @@ pub(crate) fn compress(format: Format, level: u32, data: &[u8]) -> Result<Vec<u8
         }
         #[cfg(feature = "lzma")]
         Format::Ulmo => {
-            let opts = lzma_rust2::XzOptions::with_preset(level.min(9));
+            // hdiutil writes xz streams without an integrity check.
+            let mut opts = lzma_rust2::XzOptions::with_preset(level.min(9));
+            opts.set_check_sum_type(lzma_rust2::CheckType::None);
             let mut w = lzma_rust2::XzWriter::new(Vec::with_capacity(data.len() / 2), opts)?;
             w.write_all(data)?;
             Ok(w.finish()?)

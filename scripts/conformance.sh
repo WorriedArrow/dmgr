@@ -33,7 +33,7 @@ hfs_device() {
   local img=$1 out
   out=$(hdiutil attach -readonly -nomount -noautoopen "$img" 2>&1) || { echo "$out" >&2; return 1; }
   local dev
-  dev=$(echo "$out" | awk '/Apple_HFS/{print $1; exit}')
+  dev=$(echo "$out" | awk '/^\/dev\/.*Apple_HFS/{print $1; exit}')
   [ -n "$dev" ] || dev=$(echo "$out" | awk '/^\/dev\//{d=$1} END{print d}')
   echo "$dev"
 }
@@ -253,10 +253,12 @@ for spec in "UDZO HFS+ GPTSPUD" "ULFO HFS+ GPTSPUD" "ULMO HFS+ GPTSPUD" "UDBZ HF
       fail "$name: dmgr extract"
     fi
     conv="$WORK/conv-$format.dmg"
-    if "$DMGR" convert -y "$img" -o "$conv" -f ULFO >/dev/null 2>&1 && hdiutil verify -quiet "$conv"; then
+    if "$DMGR" convert -y "$img" -o "$conv" -f ULFO > "$WORK/conv.txt" 2>&1 && hdiutil verify "$conv" >> "$WORK/conv.txt" 2>&1; then
       pass "$name: dmgr convert -> hdiutil verify"
     else
       fail "$name: dmgr convert -> hdiutil verify"
+      grep -v "^Checksumming\|verified" "$WORK/conv.txt" | tail -8 | sed 's/^/      /'
+      python3 "$HERE/udif_dump.py" "$conv" | cut -c1-300 | sed 's/^/      /'
     fi
   else
     echo "      hdiutil create failed (skipped): $out"

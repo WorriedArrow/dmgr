@@ -429,7 +429,7 @@ fn create(args: CreateArgs) -> Result<()> {
         eprint!("\r            \r");
     }
     if !args.quiet {
-        let virt = summary.koly.sector_count * 512;
+        let virt = summary.disk_size;
         eprintln!(
             "created {} ({}, {} volume, {} image) in {:.1}s",
             output.display(),
